@@ -1,0 +1,188 @@
+* Sistemas Embebidos: Exame 1a oportunidade curso 24/25 - 1ro cuadrimestre
+
+*LER CON ATENCIÓN*
+
+Unha parte do exame consiste no desenvolvemento dunha simple *CLI*
+(/Command Line Interface/, isto é, unha liña de comandos) para
+interaccionar coa vosa placa FRDM-KL46Z mediante, neste caso, a
+interface de depuración: comunicación serie coa SDA da placa a través
+do porto USB empregando o driver UART da SDK.
+
+Partiredes deste repositorio git, que debedes clonar:
+[[https://gitlab.citic.udc.es/emilio.padron/se2425_1opq1]]
+
+Cando compiledes ese código (o Makefile para facelo é o primeiro
+exercicio do exame) disporedes da comunicación serie a través de USB
+mediante a interface de depuración xa comentada (podedes ver as
+funcións e macros que ofrece esta interface, e que teredes que
+empregar, en /utilities/fsl_debug_console.h/).
+
+Podedes usar [[https://en.wikipedia.org/wiki/Minicom][minicom]] ou calquera outro software de comunicación serie
+para probar o voso código. Tedes un exemplo do seu uso xunto a esta
+tarefa do exame, ademais dun binario funcional que manda a cadea
+'hello world' se queredes probar a comunicación serie coa vosa placa.
+
+Para levar a cabo as tarefas deste exame podedes engadir todos os
+arquivos a maiores que precisedes, e engadir todo o código que
+precisedes no /main.c/. O resto de arquivos xa existentes no
+repositorio non vos está permitido cambialos, nin movelos, nin
+sobreescribilos con outros (agás unha moi boa xustificación). Isto
+inclúe o /linking script/ e o /startup/, que, como vedes, non son os
+habituais.
+
+*ENTREGABLE*: o mesmo repositorio git do que partides, cos vosos
+/commits/ por riba do previamente existente (que non vos está
+permitido modificar). Cada exercicio estará na súa propia rama.
+Podedes subir o repositorio (privado) a algún sitio en liña
+(gitlab/github/etc.) e pasarme a ligazón (e unha invitación) ou subir
+un tarball/zip con todo (pero debe estar o repositorio, isto é, o
+directorio .git). É obrigatorio que fagades varios commits, non me
+vale un commit «gordo» con todo o voso traballo. Ide facendo commits
+segundo ides progresando, aínda que non haxa un estado funcional do
+código. *Non incluades arquivos binarios nos commits, nen arquivos
+froito da compilación/enlazado*.
+
+  + *1 punto do exame*. Makefile que permita xerar un binario
+    funcional, coa comunicación serie requerida, e «flashealo» na
+    placa cun simple «make flash».
+
+    Cando o binario se está executando na placa, unha conexión polo
+    porto serie debería proporcionar esta mensaxe cada vez que se fai
+    RESET:
+
+    ~Plantilla exame Sistemas Embebidos: 1a oportunidade 24/25 Q1~
+
+    O(s) commit(s) que precisedes para engadir o Makefile faranse na
+    propia rama /Master/ xa existente. Engade tamén un commit mudando
+    a mensaxe orixinal polo teu nome completo.
+
+    Engade tamén unha regra /clean/ para borrar todos os arquivos
+    xerados durante a construción do binario, pero deixando o binario;
+    e unha regra /cleanall/ que, ademais, borra tamén o binario.
+
+    *IMPORTANTE*: Usade como flag de linkado ~--specs=nosys.specs~ en
+    lugar do habitual ~--specs=nano.specs~ que viñamos empregando.
+
+  + *3 puntos do exame*. Crea unha rama chamada /fsm/ a partir da rama
+    /master/ na que xa tes o teu Makefile funcional.
+
+    Este exercicio consiste na implementación dun autómata simple que
+    simule un sistema de seguridade con dúas portas. O sistema permite
+    abrir e pechar cada unha das portas, alertando mediante os LEDs se
+    o habitáculo está asegurado (ambas portas ben pechadas) ou non.
+
+    - O sistema fará uso dos dous botóns da placa, xestionados
+      mediante *interrupcións*:
+
+      + O botón esquerdo (collendo a placa pola zona do /slider/, a
+        parte contraria aos conectores USB) permite abrir/pechar a
+        porta 1. Cando se pulsa, abre a porta se estaba pechada, e
+        péchaa se estaba aberta.
+
+      + O botón dereito fai o mesmo coa porta 2.
+
+    - A saída do sistema indicará o estado das portas deste xeito:
+      + UNSAFE: sinal LED verde ACENDIDO, o que indica que unha ou as
+        dúas portas están abertas. Se as dúas portas están ben
+        pechadas, este LED estaría APAGADO.
+      + SAFE: sinal LED vermello ACENDIDO, cando as dúas portas están
+        ben pechadas. En caso contrario (algunha das portas está
+        aberta), APAGADO.
+
+    As dúas portas están inicialmente abertas. Só un dos dous LEDs
+    debería estar acendido nun momento dado.
+
+  + *3 puntos do exame*. Novamente, a partir da rama Master co teu
+    Makefile, crea unha rama chamada /timer/ para este exercicio.
+
+    A tarefa consiste en programar o acendido e apagado dun dos dous
+    LEDs (un calquera, o que prefirades) cunha frecuencia determinada
+    de entre as seguintes:
+    - 1 Hz (1 acendido cada segundo)
+    - 2 Hz (2 acendidos cada segundo, isto é, acéndese cada medio
+      segundo)
+    - 0.5 Hz (1 acendido cada 2 segundos)
+    - 0 Hz (o LED permanece apagado)
+
+    O sistema permitirá conmutar entre eses 4 estados do LED mediante
+    os dous botóns, seguindo esta progresión:
+
+    =0 Hz <-> 0.5 Hz <-> 1 Hz <-> 2 Hz=
+
+    O botón da dereita, incremente a velocidade (ata o máximo de 2
+    Hz), e o da esquerda diminúea (ata estar o LED apagado). O sistema
+    comezará acendendo o LED cunha frecuencia de 1 Hz.
+
+    O LCD da placa mostrará en todo momento os Hz cos que está a
+    funcionar o LED.
+
+    Podedes empregar o temporizador da placa que prefirades para levar
+    a conta do tempo, agás o SysTick.
+
+  + *3 puntos do exame*. Crea unha rama chamada /benchmark/ para este
+    exercicio, novamente partindo da rama Master co Makefile.
+
+    A tarefa consiste en levar a cabo o /benchmarking/ das distintas
+    implementacións dunha función /reverse_int()/ (invertir os bits
+    dunha palabra de 32 bits) presentadas nas [[https://udconline.udc.gal/mod/resource/view.php?id=246270][slides8.pdf]], de acordo
+    co exercicio proposto na última diapositiva (e tendo en conta a
+    última versión do PDF, con data de onte mesmo, 21 de xaneiro).
+
+    Medirase o rendemento de 4 implementacións desta función, dúas en
+    C e dúas en ensamblador, empregando o temporizador *SysTick* para
+    medir os ciclos de reloxo consumidos en cada unha delas. Estas son
+    as catro implementacións, cada unha delas estará nun arquivo fonte
+    diferente:
+    - reverse_int1(), nun arquivo fonte reverse1.c. A versión en C
+      baseada nun bucle, mostrada na diapositiva 2.
+    - reverse_int2(), nun arquivo fonte reverse2.s. A versión en ASM
+      máis optimizada da diapositiva 5 (a da dereita, vaia).
+    - reverse_int3(), nun arquivo fonte reverse3.s. A versión ASM sen
+      bucle da diapositiva 7, que precisará varios axustes para correr
+      no noso Cortex-M0+.
+    - reverse_int4(), nun arquivo fonte reverse4.c. A versión sen
+      bucle en C (diapositiva 8).
+
+    O programa correrá unha vez cada unha desas implementacións,
+    medindo os ciclos que lle leva a cada unha, e presentará pola
+    interfaz de porto serie o resultado do /benchmark/, algo coma isto:
+
+    #+begin_example
+    Benchmarking reverse_int routines:
+    Number to reverse: 1554098974
+    Elapsed ticks with reverse_int1(): 994 (2027259194)
+    Elapsed ticks with reverse_int2(): 234 (2027259194)
+    Elapsed ticks with reverse_int3(): 82 (2027259194)
+    Elapsed ticks with reverse_int4(): 115 (2027259194)
+    #+end_example
+
+    O número entre paréntese sérvenos para saber que as inversións
+    están a funcionar ok, pois mostra, en decimal, o resultado da
+    operación. Neste exemplo estase a invertir o número 0x5ca1ab1e.
+
+    Enche esta táboa cos resultados do teu /benchmarking/, na primeira
+    columna compilando e ensamblando sen optimizacións (=-O0=), e na
+    segunda columna co máximo nivel de optimización nos dous casos
+    (=-Ofast= compilando código C e =-O2= ensamblando):
+
+    |----------------+-------------------+-------------------|
+    | Código         | Sen optimizacións | Con optimizacións |
+    |----------------+-------------------+-------------------|
+    | reverse_int1() |                   |                   |
+    | reverse_int2() |                   |                   |
+    | reverse_int3() |                   |                   |
+    | reverse_int4() |                   |                   |
+    |----------------+-------------------+-------------------|
+
+    Para unha correcta contextualización dos teus resultados
+    experimentais, aporta tamén estes datos:
+
+    |--------------------------+---------|
+    | Software empregado       | Versión |
+    |--------------------------+---------|
+    | Compilador de GNU (GCC)  |         |
+    | Ensamblador de GNU (GAS) |         |
+    | OpenOCD                  |         |
+    |--------------------------+---------|
+
+    Engade un /commit/ incluíndo todos eses datos nas táboas, claro.
