@@ -132,16 +132,16 @@ void config_clock(){
 
 //para las interrupciones
 void PORTC_PORTD_IRQHandler(void){
-    if(PORTC->ISFR & (1<<12)){ //si botón izquierdo abrimos puerta 2
-      state = (state+1)%4;
-      
-    }else if(PORTC->ISFR & (1<<3)){ //si botón derecho abrimos puerta 2
-      
+    if(PORTC->ISFR & (1<<12)){
+
       if(state==0){
         state = 3;
       }else{
         state = (state-1);
       }
+      
+    }else if(PORTC->ISFR & (1<<3)){
+      state = (state+1)%4;
     }
 
     if(state == 0){
