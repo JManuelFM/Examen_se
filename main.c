@@ -35,6 +35,7 @@
 #include "fsl_device_registers.h"
 #include "fsl_debug_console.h"
 #include "board.h"
+#include "lcd.h"
 
 #include "pin_mux.h"
 /*******************************************************************************
@@ -52,15 +53,22 @@
 /*!
  * @brief Main function
  */
+int light = 0;
+unsigned int state = 2;
+float stateMachine[4] = {0, 0.5, 1, 2};
 
-unsigned int leftOpen = 0;
-unsigned int rightOpen = 0;
 
 void delay(void)
 {
   volatile int i;
 
   for (i = 0; i < 100000; i++);
+}
+
+void irclk_ini()
+{
+  MCG->C1 = MCG_C1_IRCLKEN(1) | MCG_C1_IREFSTEN(1);
+  MCG->C2 = MCG_C2_IRCS(0); //0 32KHZ internal reference clock; 1= 4MHz irc
 }
 
 void init_buttons(){
@@ -98,31 +106,69 @@ void led_init()
     GPIOE->PSOR |= (1 << 29);     // Apagar o LED (pón o PTE29 en alto)
 }
 
+void LPTMR_Init() {
+    SIM->SCGC5 |= SIM_SCGC5_LPTMR_MASK;  // Habilitar reloj para LPTMR
+
+    LPTMR0->CSR = 0;  // Desactivar temporizador antes de configurarlo
+    
+    LPTMR0->PSR = LPTMR_PSR_PCS(1) | LPTMR_PSR_PBYP_MASK;  // Usar reloj LPO (1 kHz), sin divisor
+    LPTMR0->CMR = 1000;  // 1000 ticks = 1 segundo
+
+    NVIC_EnableIRQ(LPTMR0_IRQn);  // Activar interrupción para LPTMR
+    NVIC_SetPriority(LPTMR0_IRQn, 2);  // Prioridad baja
+    
+    LPTMR0->CSR = LPTMR_CSR_TIE_MASK | LPTMR_CSR_TEN_MASK;  // Activar con interrupción
+}
+
+void config_clock(){
+  LPTMR0->CSR = 0;
+  if(state == 0){
+    LPTMR0->CMR = 0;
+  }else{
+    LPTMR0->CMR = 1000/stateMachine[state];
+  }
+  LPTMR0->CSR = LPTMR_CSR_TIE_MASK | LPTMR_CSR_TEN_MASK;  // Activar con interrupción
+}
+
 //para las interrupciones
 void PORTC_PORTD_IRQHandler(void){
     if(PORTC->ISFR & (1<<12)){ //si botón izquierdo abrimos puerta 2
-      leftOpen = (leftOpen+1)%2;
-      if(!leftOpen){
-        PRINTF("cerramos puerta 1\r\n");
-      }else{
-        PRINTF("abrimos puerta 1\r\n");
-      }
+      state = (state+1)%4;
       
     }else if(PORTC->ISFR & (1<<3)){ //si botón derecho abrimos puerta 2
-      rightOpen = (rightOpen+1)%2;
       
-      if(!rightOpen){
-        PRINTF("cerramos puerta 2\r\n");
+      if(state==0){
+        state = 3;
       }else{
-        PRINTF("abrimos puerta 2\r\n");
+        state = (state-1);
       }
     }
+
+    if(state == 0){
+      GPIOD->PSOR |= (1 << 5);
+    }
     
+    config_clock();
+    lcd_display_dec(stateMachine[state]*10);
+
     //limpiamos los flag para que el interrupt deje de producirse
     PORTC->ISFR |= (1 << 12);
     PORTC->ISFR |= (1 << 3);
 }
 
+void LPTMR0_IRQHandler(void) {
+    if (LPTMR0->CSR & LPTMR_CSR_TCF_MASK) {
+
+      if(light){
+         GPIOD->PSOR |= (1 << 5);      // Apagar LED verde
+      }else{
+        GPIOD->PCOR |= (1 << 5);      // Encender LED verde
+      }
+
+      light = (light+1)%2;
+      LPTMR0->CSR |= LPTMR_CSR_TCF_MASK;
+    }
+}
 
 int main(void)
 {
@@ -132,22 +178,21 @@ int main(void)
   BOARD_BootClockRUN();
   BOARD_InitDebugConsole();
 
+  irclk_ini();
+  lcd_ini();
+  LPTMR_Init();
+
   init_buttons();
   led_init();
   
   SIM->COPC = 0;               // Desactivar Watchdog Timer
 
   PRINTF("Plantilla exame Sistemas Embebidos: 1a oportunidade 24/25 Q1\r\n");
+  lcd_display_dec(stateMachine[state]*10);
 
   while (1)
-    {
-      if (rightOpen || leftOpen){
-        GPIOD->PCOR |= (1 << 5);      // Encender LED verde
-        GPIOE->PSOR |= (1 << 29);     // Apagar LED rojo
-      }else{
-        GPIOD->PSOR |= (1 << 5);      // Apagar LED verde
-        GPIOE->PCOR |= (1 << 29);     // Encender LED rojo
-      }
+    {      
+      lcd_display_dec(stateMachine[state]*10);
       delay();
     }
 }
