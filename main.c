@@ -159,7 +159,7 @@ void PORTC_PORTD_IRQHandler(void){
 void LPTMR0_IRQHandler(void) {
     if (LPTMR0->CSR & LPTMR_CSR_TCF_MASK) {
 
-      if(light){
+      if(light || state==0){
          GPIOD->PSOR |= (1 << 5);      // Apagar LED verde
       }else{
         GPIOD->PCOR |= (1 << 5);      // Encender LED verde
