@@ -52,6 +52,78 @@
 /*!
  * @brief Main function
  */
+
+unsigned int leftOpen = 0;
+unsigned int rightOpen = 0;
+
+void delay(void)
+{
+  volatile int i;
+
+  for (i = 0; i < 100000; i++);
+}
+
+void init_buttons(){
+    SIM->SCGC5 |= (1 << 11);
+    
+    PORTC->PCR[3] = (1 << 8) //configura el pin como GPIO
+                  | (1 << 1) //habilita pull-up
+                  | (1 << 0); 
+    
+    PORTC->PCR[12] = (1 << 8) //configura el pin comoGPIO
+                   | (1 << 1) //habilita pull-up
+                   | (1 << 0);
+                   
+    GPIOC->PDDR &= ~(1 << 3);
+    GPIOC->PDDR &= ~(1 << 12); //configura ambos como puertos de entrada
+    
+    NVIC_EnableIRQ(PORTC_PORTD_IRQn); //interrupciones del puerto C
+    
+    PORTC->PCR[3] |= PORT_PCR_IRQC(0xA);
+    PORTC->PCR[12] |= PORT_PCR_IRQC(0xA);
+}
+
+void led_init()
+{
+    SIM->SCGC5 |= (1 << 12);      // Habilitar reloxo para o porto D
+    SIM->SCGC5 |= (1 << 13);      // Habilitar reloxo para o porto E
+    
+    PORTD->PCR[5] = 1 << 8;       // Configurar PTD5 como GPIO
+    PORTE->PCR[29] = 1 << 8;      // Configurar PTE29 como GPIO
+    
+    GPIOD->PDDR |= (1 << 5);      // Configurar PTD5 como saída
+    GPIOE->PDDR |= (1 << 29);     // Configurar PTE29 como saída
+    
+    GPIOD->PSOR |= (1 << 5);      // Apagar o LED (pón o PTD5 en alto)
+    GPIOE->PSOR |= (1 << 29);     // Apagar o LED (pón o PTE29 en alto)
+}
+
+//para las interrupciones
+void PORTC_PORTD_IRQHandler(void){
+    if(PORTC->ISFR & (1<<12)){ //si botón izquierdo abrimos puerta 2
+      leftOpen = (leftOpen+1)%2;
+      if(!leftOpen){
+        PRINTF("cerramos puerta 1\r\n");
+      }else{
+        PRINTF("abrimos puerta 1\r\n");
+      }
+      
+    }else if(PORTC->ISFR & (1<<3)){ //si botón derecho abrimos puerta 2
+      rightOpen = (rightOpen+1)%2;
+      
+      if(!rightOpen){
+        PRINTF("cerramos puerta 2\r\n");
+      }else{
+        PRINTF("abrimos puerta 2\r\n");
+      }
+    }
+    
+    //limpiamos los flag para que el interrupt deje de producirse
+    PORTC->ISFR |= (1 << 12);
+    PORTC->ISFR |= (1 << 3);
+}
+
+
 int main(void)
 {
   char ch;
@@ -61,11 +133,22 @@ int main(void)
   BOARD_BootClockRUN();
   BOARD_InitDebugConsole();
 
+  init_buttons();
+  led_init();
+  
+  SIM->COPC = 0;               // Desactivar Watchdog Timer
+
   PRINTF("Plantilla exame Sistemas Embebidos: 1a oportunidade 24/25 Q1\r\n");
 
   while (1)
     {
-      ch = GETCHAR();
-      PUTCHAR(ch);
+      if (rightOpen || leftOpen){
+        GPIOD->PCOR |= (1 << 5);      // Encender LED verde
+        GPIOE->PSOR |= (1 << 29);     // Apagar LED rojo
+      }else{
+        GPIOD->PSOR |= (1 << 5);      // Apagar LED verde
+        GPIOE->PCOR |= (1 << 29);     // Encender LED rojo
+      }
+      delay();
     }
 }
